@@ -8,7 +8,7 @@ OpenVPN - https://openvpn.net/index.php/access-server/overview.html
 
 
 
-Running on the latest Phusion release (ubuntu 16.04), with OpenVPN AS 2.1.2.
+Running on the latest Phusion release (ubuntu 16.04), with OpenVPN AS 2.5.
 
 Username and Password "admin / openvpn"
 
