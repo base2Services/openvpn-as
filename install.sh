@@ -20,8 +20,8 @@ rm -rf /etc/service/sshd /etc/my_init.d/00_regen_ssh_host_keys.sh
 #########################################
 
 # Install Dependencies
-apt-get update -qq
-apt-get install -qy net-tools iptables curl
+#apt-get update -qq
+#apt-get install -qy net-tools iptables curl
 
 #########################################
 ##  FILES, SERVICES AND CONFIGURATION  ##
@@ -116,9 +116,9 @@ cat <<'EOT' > /etc/my_init.d/01_start.sh
 # Checking if default admin user is set
 user=$( /usr/local/openvpn_as/scripts/confdba -us|grep -ic "admin" )
 
-echo "Upgrading local packages(Security) - This might take awhile(first run takes some extra time)"
-apt-get update -qq && apt-get upgrade -yqq
-echo "Upgrade Done...."
+#echo "Upgrading local packages(Security) - This might take awhile(first run takes some extra time)"
+#apt-get update -qq && apt-get upgrade -yqq
+#echo "Upgrade Done...."
 
 if [ $user -eq 1 ]; then
   echo "Admin username and password has already been set! Starting Openvpn-AS."
@@ -145,8 +145,9 @@ chmod -R +x /etc/my_init.d/
 #########################################
 
 # Install OpenVPN-AS
-curl -O http://swupdate.openvpn.org/as/openvpn-as-2.1.12-Ubuntu16.amd_64.deb
-dpkg -i openvpn-as-2.1.12-Ubuntu16.amd_64.deb
+#curl -O http://swupdate.openvpn.org/as/openvpn-as-2.1.12-Ubuntu16.amd_64.deb
+dpkg -i /opt/base2/pkg/openvpn-as-2.5-Ubuntu16.amd_64.deb
+#dpkg -i openvpn-as-2.1.12-Ubuntu16.amd_64.deb
 
 
 
@@ -155,5 +156,5 @@ dpkg -i openvpn-as-2.1.12-Ubuntu16.amd_64.deb
 #########################################
 
 # Clean APT install files
-rm openvpn-as-2.1.12-Ubuntu16.amd_64.deb
+rm -f /opt/base2/pkg/openvpn-as-2.5-Ubuntu16.amd_64.deb
 
