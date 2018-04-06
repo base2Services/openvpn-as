@@ -1,7 +1,7 @@
 # Builds a docker image for a OpenVPN Access Server
 FROM phusion/baseimage 
 MAINTAINER Lew Shobbrook <l.shobbrook@base2services.com>
-
+# forked from  macexx/openvpn-as
 
 ###############################################
 ##           ENVIRONMENTAL CONFIG            ##
