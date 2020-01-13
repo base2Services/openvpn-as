@@ -1,38 +1,48 @@
-# Builds a docker image for a OpenVPN Access Server
-FROM phusion/baseimage 
-MAINTAINER Lew Shobbrook <l.shobbrook@base2services.com>
-# forked from  macexx/openvpn-as
+FROM lsiobase/ubuntu:bionic
 
-###############################################
-##           ENVIRONMENTAL CONFIG            ##
-###############################################
-# Set correct environment variables
-ENV DEBIAN_FRONTEND noninteractive
-ENV HOME="/root" LC_ALL="C.UTF-8" LANG="en_AU.UTF-8" LANGUAGE="en_AU.UTF-8"
+# set version label
+ARG BUILD_DATE
+ARG VERSION
+ARG OPENVPNAS_VERSION 
+LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
+LABEL maintainer="LewS"
 
-RUN apt-get update -qq && \
-apt-get upgrade -yqq && \
-apt-get install -qy net-tools iptables curl && apt-get clean
-RUN mkdir -p /opt/base2/pkg
-RUN cd /opt/base2/pkg && curl -O http://swupdate.openvpn.org/as/openvpn-as-2.5-Ubuntu16.amd_64.deb
+# environment settings
+ARG DEBIAN_FRONTEND="noninteractive"
 
+RUN \
+ echo "**** install packages ****" && \
+ apt-get update && \
+ apt-get install -y \
+	iptables \
+	libmysqlclient-dev \
+	net-tools \
+	rsync \
+	sqlite3 && \
+ echo "**** download openvpn-as ****" && \
+ if [ -z ${OPENVPNAS_VERSION+x} ]; then \
+	OPENVPNAS_VERSION=$(curl -w "%{url_effective}" -ILsS -o /dev/null \
+	https://openvpn.net/downloads/openvpn-as-latest-ubuntu18.amd_64.deb \
+	| awk -F '(openvpn-as-|-Ubuntu18)' '{print $2}'); \
+ fi && \
+ mkdir /openvpn && \
+ curl -o \
+ /openvpn/openvpn.deb -L \
+	"https://swupdate.openvpn.org/as/openvpn-as-${OPENVPNAS_VERSION}-Ubuntu18.amd_64.deb" && \
+ curl -o \
+ /openvpn/openvpn-clients.deb -L \
+        "https://openvpn.net/downloads/openvpn-as-bundled-clients-latest.deb" && \
+ echo "**** ensure home folder for abc user set to /config ****" && \
+ usermod -d /config abc && \
+ echo "**** create admin user and set default password for it ****" && \
+ useradd -s /sbin/nologin admin && \
+ echo "admin:password" | chpasswd && \
+ rm -rf \
+	/tmp/*
 
-# Use baseimage-docker's init system
-CMD ["/sbin/my_init"]
-
-###############################################
-##   INTALL ENVIORMENT, INSTALL OPENVPN      ##
-###############################################
-COPY install.sh /tmp/
-RUN chmod +x /tmp/install.sh && sleep 1 && /tmp/install.sh && rm /tmp/install.sh
-
-
-###############################################
-##             PORTS AND VOLUMES             ##
-###############################################
-
-#expose 9443/tcp
-#expose 443/tcp
-#expose 943/tcp
-#expose 1194/udp
+# add local files
+COPY /root /
+COPY awsip-diff.py /usr/share/base2/
+# ports and volumes
+EXPOSE 943/tcp 1194/udp 9443/tcp
 VOLUME /config
