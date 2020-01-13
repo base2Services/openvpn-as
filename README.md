@@ -1,131 +1,198 @@
-[![logo](http://www.linkideo.com/images/openvpn_logo.jpg)](https://openvpn.net/)
+### base2 openvpn-as
 
-OpenVPN Access Server
-==========================
+Forked from Linuxserver
 
-
-OpenVPN - https://openvpn.net/index.php/access-server/overview.html
-
-
-
-Running on the latest Phusion release (ubuntu 16.04), with OpenVPN AS 2.5.
-
-Username and Password "admin / openvpn"
-
-**Pull image**
+### docker
 
 ```
-docker pull mace/openvpn-as
-```
-
-**Run container**
-
-```
-docker run -d --net="host" --privileged --name=<container name> -v <path for openvpn config files>:/config -v /etc/localtime:/etc/localtime:ro mace/openvpn-as
-```
-Please replace all user variables in the above command defined by <> with the correct values.
-If you need to change the lisetning interface add(default is eth0):
-```
--v INTERFACE=<interface name>
-```
-
-**Web-UI**
-
-```
-http://<host ip>:943/admin
-Username and Password "admin / openvpn" (This can be changed in the webui)
+docker create \
+  --name=openvpn-as \
+  --cap-add=NET_ADMIN \
+  -e PUID=1000 \
+  -e PGID=1000 \
+  -e TZ=Europe/London \
+  -e INTERFACE=eth0 `#optional` \
+  -p 943:943 \
+  -p 9443:9443 \
+  -p 1194:1194/udp \
+  -v <path to data>:/config \
+  --restart unless-stopped \
+  linuxserver/openvpn-as
 ```
 
 
-**Example**
+### docker-compose
+
+Compatible with docker-compose v2 schemas.
 
 ```
-docker run -d --net="host"  --privileged --name=openvpnas -v /mylocal/directory/fordata:/config -v /etc/localtime:/etc/localtime:ro -e INTERFACE=br0 mace/openvpn-as
+---
+version: "2"
+services:
+  openvpn-as:
+    image: linuxserver/openvpn-as
+    container_name: openvpn-as
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - INTERFACE=eth0 #optional
+    volumes:
+      - <path to data>:/config
+    ports:
+      - 943:943
+      - 9443:9443
+      - 1194:1194/udp
+    restart: unless-stopped
+```
+
+## Parameters
+
+Container images are configured using parameters passed at runtime (such as those above). These parameters are separated by a colon and indicate `<external>:<internal>` respectively. For example, `-p 8080:80` would expose port `80` from inside the container to be accessible from the host's IP on port `8080` outside the container.
+
+| Parameter | Function |
+| :----: | --- |
+| `-p 943` | Admin GUI port. |
+| `-p 9443` | TCP port. |
+| `-p 1194/udp` | UDP port. |
+| `-e PUID=1000` | for UserID - see below for explanation |
+| `-e PGID=1000` | for GroupID - see below for explanation |
+| `-e TZ=Europe/London` | Specify a timezone to use EG Europe/London. |
+| `-e INTERFACE=eth0` | With bridge networking, leave it as eth0 (or don't include at all), if host or macvlan, set it to your host's network interface, found by running `ifconfig` |
+| `-v /config` | Where openvpn-as should store configuration files. |
+
+## Environment variables from files (Docker secrets)
+
+You can set any environment variable from a file by using a special prepend `FILE__`. 
+
+As an example:
+
+```
+-e FILE__PASSWORD=/run/secrets/mysecretpassword
+```
+
+Will set the environment variable `PASSWORD` based on the contents of the `/run/secrets/mysecretpassword` file.
+
+## User / Group Identifiers
+
+When using volumes (`-v` flags) permissions issues can arise between the host OS and the container, we avoid this issue by allowing you to specify the user `PUID` and group `PGID`.
+
+Ensure any volume directories on the host are owned by the same user you specify and any permissions issues will vanish like magic.
+
+In this instance `PUID=1000` and `PGID=1000`, to find yours use `id user` as below:
+
+```
+  $ id username
+    uid=1000(dockeruser) gid=1000(dockergroup) groups=1000(dockergroup)
 ```
 
 
-**Additional notes**
+&nbsp;
+## Application Setup
+
+The admin interface is available at `https://<ip>:943/admin` with a default user/password of admin/password
+
+During first login, make sure that the "Authentication" in the webui is set to "Local" instead of "PAM". Then set up the user accounts with their passwords (user accounts created under PAM do not survive container update or recreation).
+
+The "admin" account is a system (PAM) account and after container update or recreation, its password reverts back to the default. It is highly recommended to block this user's access for security reasons:
+1) Create another user and set as an admin,
+2) Log in as the new user,
+3) Delete the "admin" user in the gui,
+4) Modify the `as.conf` file under config/etc and replace the line `boot_pam_users.0=admin` with ~~`#boot_pam_users.0=admin`~~ `boot_pam_users.0=kjhvkhv` (this only has to be done once and will survive container recreation)  
+* IMPORTANT NOTE: Commenting out the first pam user in as.conf creates issues in 2.7.5. To make it work while still blocking pam user access, uncomment that line and change admin to a random nonexistent user as described above.
 
 
-* The owner of the config directory needs sufficent permissions (UUID 99 / GID 100).
-* Dont forget to forward/open ports to/on you docker host or in your router/firewall, the ports can be changed in the webui.
+
+## Support Info
+
+* Shell access whilst the container is running: `docker exec -it openvpn-as /bin/bash`
+* To monitor the logs of the container in realtime: `docker logs -f openvpn-as`
+* container version number
+  * `docker inspect -f '{{ index .Config.Labels "build_version" }}' openvpn-as`
+* image version number
+  * `docker inspect -f '{{ index .Config.Labels "build_version" }}' linuxserver/openvpn-as`
+
+## Updating Info
+
+Most of our images are static, versioned, and require an image update and container recreation to update the app inside. With some exceptions (ie. nextcloud, plex), we do not recommend or support updating apps inside the container. Please consult the [Application Setup](#application-setup) section above to see if it is recommended for the image.
+
+Below are the instructions for updating containers:
+
+### Via Docker Run/Create
+* Update the image: `docker pull linuxserver/openvpn-as`
+* Stop the running container: `docker stop openvpn-as`
+* Delete the container: `docker rm openvpn-as`
+* Recreate a new container with the same docker create parameters as instructed above (if mapped correctly to a host folder, your `/config` folder and settings will be preserved)
+* Start the new container: `docker start openvpn-as`
+* You can also remove the old dangling images: `docker image prune`
+
+### Via Docker Compose
+* Update all images: `docker-compose pull`
+  * or update a single image: `docker-compose pull openvpn-as`
+* Let compose update all containers as necessary: `docker-compose up -d`
+  * or update a single container: `docker-compose up -d openvpn-as`
+* You can also remove the old dangling images: `docker image prune`
+
+### Via Watchtower auto-updater (especially useful if you don't remember the original parameters)
+* Pull the latest image at its tag and replace it with the same env variables in one run:
+  ```
+  docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  containrrr/watchtower \
+  --run-once openvpn-as
+  ```
+
+**Note:** We do not endorse the use of Watchtower as a solution to automated updates of existing Docker containers. In fact we generally discourage automated updates. However, this is a useful tool for one-time manual updates of containers where you have forgotten the original parameters. In the long term, we highly recommend using Docker Compose.
+
+* You can also remove the old dangling images: `docker image prune`
+
+## Building locally
+
+If you want to make local modifications to these images for development purposes or just to customize the logic:
 ```
-1194/udp 9443/tcp  (943/tcp for webui if needed)
+git clone https://github.com/linuxserver/docker-openvpn-as.git
+cd docker-openvpn-as
+docker build \
+  --no-cache \
+  --pull \
+  -t linuxserver/openvpn-as:latest .
 ```
-* Check the manual from the link on the top for how to setup the server.
 
+The ARM variants can be built on x86_64 hardware using `multiarch/qemu-user-static`
+```
+docker run --rm --privileged multiarch/qemu-user-static:register --reset
+```
 
-**Change notes**
+Once registered you can define the dockerfile to use with `-f Dockerfile.aarch64`.
 
-Change notes
+## Versions
 
-* 2015.07.01
-
-Complete rewrite - Last code diden´t survive upgrades of openvpn and sometimes got corrupted on docker rebuilds. New code to better fit unRAID permissions and Phusion template. (Need to set a new config directory/ or clear old one- if upgrading).
-* 2015.08.11
-
-Update Phusion base-image, Update to Openvpn-AS 2.0.20.
-* 2015.08.15
-
-Admin username changed, "admin" and password "openvpn".
-Default tcp port changed from 443 to 9443
-All username/passvord variables removed, now uses internal database.
-"INTERFACE" variable added, fixes bond0 issues.
-openvpn is now running as nobody:users.
-* 2015.10.7
-
-Fix error that /mnt/user/(appdata) couldent be used. (symlinked and samba shares for non unRAID systems)
-* 2015.10.17
-
-Update to openvpn-as openvpn-as-2.0.21.
-* 2015.11.12
-
-Add variable for pipework, "PIPEWORK".
-* 2015.08.11
-
-Update Phusion base-image. 
-* 2015.08.15
-
-Admin username changed, "admin" and password "openvpn".
-Default tcp port changed from 443 to 9443.
-All username/passvord variables removed, now uses internal database.
-"INTERFACE" variable added, fixes bond0 issues.
-openvpn is now running as nobody:users.
-* 2015.10.7
-
-Fix error that /mnt/user/(appdata) couldent be used.
-* 2015.10.17
-
-Update to openvpn-as-2-0-21 
-* 2015.11.12
-
-Added support for pipework (defaults to eth1 and port 443 instead of 9443)
-* 2015.12.16
-
-Upgrade Phusion base-image.
-* 2015.12.19
-
-Revert to previous Phusion base-image.(New image is bugged)
-* 2015.12.24
-
-Phusion base-image.(Upgrade sys-log)
-Add apt-get upgrade for security updates should have been enabled along time ago
-* 2016.01.06
-
-Upgrade to Openvpn-as-2.0.24
-* 2016.03.24
-
-Upgrade to Openvpn-as-2.0.25
-* 2016.05.22
-
-Upgrade to Openvpn-as-2.1.0
-* 2016.06.27
-
-Upgrade to Openvpn-as-2.1.1
-* 2016.07.8
-
-Upgrade to Openvpn-as-2.1.2
-* 2017.11.19
-
-Move to phusion 0.9.22 (Ubuntu 16.04)
-Removed pipework support now that docker supports macvlan
+* **29.08.19:** - Update Application Setup instructions in readme to fix 2.7.5 login issue for existing users.
+* **27.08.19:** - Add new clients package to install and upgrade process.
+* **22.08.19:** - Prevent auto-start of openvpn after first time install, before configuration is completed.
+* **25.07.19:** - Create a xenial branch/tag and rebase master/latest to bionic.
+* **07.04.19:** - Fix first time config.
+* **03.04.19:** - Big rewrite of the install and update logic of openvpn-as to fix breaking changes (should fix updating from 2.6.1 to 2.7.3), added mysql-client for cluster support.
+* **14.03.19:** - Update deb package URL.
+* **21.02.19:** - Rebase to xenial due to incompatibility issues on some older host OSes.
+* **12.02.19:** - Rename github repo to match the docker hub repo and container name.
+* **07.02.19:** - Add pipeline logic and multi arch.
+* **31.01.19:** - Add port mappings to docker create sample in readme.
+* **26.01.19:** - Removed `privileged` and `host` networking requirements, added `cap-add=NET_ADMIN` requirement instead. `INTERFACE` no longer needs to be defined as in bridge mode, it will use the container's eth0 interface by default.
+* **19.12.18:** - Bump to version 2.6.1.
+* **10.07.18:** - Bump to version 2.5.2.
+* **23.03.18:** - Bump to version 2.5.
+* **14.12.17:** - Consolidate layers and fix continuation lines.
+* **25.10.17:** - Bump to version 2.1.12.
+* **18.08.17:** - Switch default authentication method to local, update readme on how to deactivate the admin user.
+* **31.07.17:** - Fix updates of existing openvpn-as installs.
+* **07.07.17:** - Bump to version 2.1.9.
+* **31.10.16:** - Bump to version 2.1.4.
+* **14.10.16:** - Add version layer information.
+* **13.09.16:** - Rebuild due to push error to hub on last build.
+* **10.09.16:** - Add layer badges to README.
+* **28.08.16:** - Add badges to README.
+* **01.08.16:** - Rebase to xenial.
+* **18.09.15:** - Initial Release.

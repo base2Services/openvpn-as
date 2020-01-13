@@ -5,7 +5,7 @@ ARG BUILD_DATE
 ARG VERSION
 ARG OPENVPNAS_VERSION 
 LABEL build_version="Linuxserver.io version:- ${VERSION} Build-date:- ${BUILD_DATE}"
-LABEL maintainer="sparklyballs,aptalca"
+LABEL maintainer="LewS"
 
 # environment settings
 ARG DEBIAN_FRONTEND="noninteractive"
