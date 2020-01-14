@@ -35,7 +35,7 @@ def awsips(awsregions,filesize):
             newips.append(str(ip['ip_prefix']))
     ipdiff = tuple(set(newips) - set(oldips))
     for ip in ipdiff:
-        subprocess.call("/usr/bin/docker exec openvpn-as bash -c '/config/scripts/sacli --user aws --key group_subnets.111111 --value \""+ str(ip) + "\" UserPropPut\n'", shell=True)
+        subprocess.call("/usr/bin/docker exec openvpn-as bash -c '/config/scripts/sacli --user aws --key vpn.server.routing.private_network.111111 --value \""+ str(ip) + "\" ConfigPut\n'", shell=True)
     return ipdiff
 
 queryip = awsips(awsregions,filesize)
